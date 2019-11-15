@@ -28,14 +28,15 @@ def countPage(bsOject):
 	pagination = bsObject.body.find("div",{"class":"pagination"})
 	return pagination.find_all("a")[-1].get_text()
 
-#string 안에 숫자가 하나 있을 경우 가져옴(/n/t/t/t/t/t10ms/t/t/t/t/t/)
+# return type: int
+# string 안에 숫자가 하나 있을 경우 가져옴(/n/t/t/t/t/t10ms/t/t/t/t/t/)
 def extractTime(statString):
 	statString = statString.strip()
 	
 	if (statString[0:-2]).isdigit():
 		return int(statString[0:-2])
 	else:
-		return null
+		return None
 
 if __name__ == "__main__":
 	userIDs = util.readIDs() # config 파일에서 user id를 읽어옴
