@@ -6,6 +6,12 @@ import re
 import time
 
 ALGO_RESULT_URL = "https://algospot.com/judge/submission/recent/"
+CONFIG_PATH = "./secure.conf"
+REPO_NAME = "yhchoi0225/AlgoBoard"
+FILE_NAME = "README.md"
+COMMIT_MSG = "README update by auto-crawler"
+BRANCH_NAME = "updateStatus"
+#BRANCH_NAME = "master"
 
 def getBSObject(userId):
 	html = urlopen(ALGO_RESULT_URL+ "?user="+userId+"&state=6")
@@ -38,14 +44,21 @@ def extractTime(statString):
 	else:
 		return None
 
-if __name__ == "__main__":
-	userIDs = util.readIDs() # config 파일에서 user id를 읽어옴
-	userResultDicts = [dict() for i in range(len(userIDs))] # 각 유저의 문제별 시간을 dict으로 저장
 
-	gitContents = git.readMDFile()
-	gitContentStr = gitContents.decoded_content.decode('utf-8')
+#MAIN 파트 시작
+if __name__ == "__main__":
+	config = util.Config(CONFIG_PATH) #config 객체 생성
+	userIds = config.getUserIds() # config 객체에서 user id를 읽어옴
+	token = config.getGitToken() # git api에 연결할 토큰 가져옴
+	userResultDicts = [dict() for i in range(len(userIds))] # 각 유저의 문제별 시간을 dict으로 저장할 자료구조 생성
+
+	# 토큰을 통해서 git api 연결
+	gitCli = git.GitConnector(token)
+	# 해당 REPO의 file 컨텐츠 다운
+	gitContentStr = gitCli.getDecodedContents(REPO_NAME, FILE_NAME)
 	
-	for idx, user in enumerate(userIDs):
+	# 각 유저에 대해 결과 dictionary 채움
+	for idx, user in enumerate(userIds):
 		tmpDict = dict()
 		bsObject = getBSObject(user, 1)
 		pageNumber = int(countPage(bsObject))
@@ -63,12 +76,14 @@ if __name__ == "__main__":
 					tmpDict[probName] = probStatInt
 		userResultDicts[idx] = tmpDict;	
 
+	# 유저별 결과 dict을 문제별로 순차적으로 서치하여 새로운 컨텐츠 작성
 	newGitContentStr = str()
-	for line in gitContentStr.split('\n'):
+	splitedStr = gitContentStr.split('\n')
+	for line in splitedStr:
 		if len(line) > 1 and line[0] is '|' and line[1].isdigit():
 			lineArr = line.split('|')
 			probName = lineArr[2]
-			for idx in range(len(userIDs)):
+			for idx in range(len(userIds)):
 				if probName in userResultDicts[idx]:
 					solveTime = userResultDicts[idx].get(probName)
 					lineArr[3+idx] = str(solveTime)+"ms"
@@ -81,6 +96,13 @@ if __name__ == "__main__":
 			newGitContentStr += line
 			newGitContentStr += '\n'
 
-	newGitContentStr += "# Last update : " + time.strftime('%c', time.localtime(time.time())) + "\n"
+	print(newGitContentStr.encode('utf-8'))
+	while( newGitContentStr[-1] == '\n'):
+		newGitContentStr = newGitContentStr[:-1]
+	newGitContentStr = newGitContentStr[:newGitContentStr.rfind('\n')]
+	dateLine = "# Last update : " + time.strftime('%c', time.localtime(time.time()))
+	newGitContentStr += ('\n'+ dateLine)
+	print(newGitContentStr.encode('utf-8'))
 
-	git.updateMDFile(newGitContentStr)
+	# 최종적으로 만들어진 컨텐츠(str)를 해당 file로 다시 커밋하여 업데이트
+	gitCli.updateFile(REPO_NAME, FILE_NAME, COMMIT_MSG, newGitContentStr, BRANCH_NAME)

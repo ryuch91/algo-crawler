@@ -2,44 +2,33 @@ import urllib.request
 import configparser
 from github import Github
 
-# secure.conf 파일을 읽어서 설정값들을 반환(user id목록, github login아이디, github token) 
-def readConfig():
-	parser = configparser.ConfigParser()
-	parser.read('./secure.conf')
+# config를 담을 객체(user id 목록, github login 아이디, github api 연결 토큰)
+class Config:
+	def __init__(self, file_path):
+		self.config_path = file_path
+		parser = configparser.ConfigParser()
+		parser.read(file_path)
 
-	user_ids = parser.get('MAIN', 'user_ids')
-	github_id = parser.get('MAIN', 'github_id')
-	github_token = parser.get('MAIN', 'github_token')
+		self.user_ids = parser.get('MAIN', 'user_ids')
+		self.github_id = parser.get('MAIN', 'github_id')
+		self.github_token = parser.get('MAIN', 'github_token')
 
-	return (user_ids, github_id, github_token)
+	# user_ids를 list 형태로 변환하여 반환
+	def getUserIds(self):
+		user_ids = [i.strip() for i in (self.user_ids).split(',')]
+		return user_ids
 
-# secure.conf 파일을 읽어서 user id들을 list 형태로 반환
-def readIDs():
-	parser = configparser.ConfigParser()
-	parser.read('./secure.conf')
+	def getGitId(self):
+		return self.github_id
 
-	user_ids = [i.strip() for i in parser.get('MAIN','user_ids').split(',')]
-	return user_ids
-
-def readGitID():
-	parser = configparser.ConfigParser()
-	parser.read('./secure.conf')
-	github_id = parser.get('MAIN', 'github_id')
-	return github_id
-
-def readGitToken():
-	parser = configparser.ConfigParser()
-	parser.read('./secure.conf')
-	github_token = parser.get('MAIN', 'github_token')
-	return github_token
+	def getGitToken(self):
+		return self.github_token
 
 if __name__ == '__main__':
-	config = readConfig()
-	user_ids = readIDs()
-	github_id = readGitID()
-	github_token = readGitToken()
+	config = Config('./secure.conf')
 
-	print(config[0], config[1], config[2])
+	user_ids = config.getUserIds()
+	github_id = config.getGitId()
+
 	print(user_ids)
 	print(github_id)
-	print(github_token)
